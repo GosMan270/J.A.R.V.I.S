@@ -1,32 +1,33 @@
 import pvporcupine
 import pyaudio
-import asyncio
-import numpy as np
-import json
 import os
 import vosk
-import vlc
+import random
 
-from src.data.utils import VOICE
-from src.run.config import config
-from src.data.utils import AI
+import torch
 
-def is_silence(audio_bytes, threshold=500):
-    arr = np.frombuffer(audio_bytes, dtype=np.int16)
-    if arr.size == 0:
-        return True
-    return np.abs(arr).mean() < threshold
+from src.data.utils import CHECKS
+from src.data.run.config import config
+from src.data.run.prompt import standart_word
+from src.data.voice import Voice
+
+
+
+
 
 class Jarvis:
+    #Инициализация моделей ИИ и загрузка
     def __init__(self):
-        print("JARVIS initialization....")
+        
+        #Инициализация PICO
         self.porcupine = pvporcupine.create(
             access_key=config['pico_key'],
             keyword_paths=[config['pico_model']],
         )
-        print("Porcupine initialization....")
+        print("PICO LOADED!")
+
+        #Инициализация VOSK
         self.pa = pyaudio.PyAudio()
-        print("Pa initialization....")
         self.audio_stream = self.pa.open(
             rate=self.porcupine.sample_rate,
             channels=1,
@@ -34,69 +35,59 @@ class Jarvis:
             input=True,
             frames_per_buffer=self.porcupine.frame_length
         )
-        print("Audio stream initialization...")
         if not os.path.exists(config['vosk_model']):
             print("Dont model!")
             exit(1)
-        print("Model loaded....")
         self.model = vosk.Model(config['vosk_model'])
-        print("Model successfully loaded!")
         self.rec = vosk.KaldiRecognizer(self.model, config['vosk_frame_rate'])
-        print("Model and rec grate loaded!")
+        print("VOSK LOADED!")
 
+        # Инициализация SILERO
+        self.language = "ru"
+        self.model_id = "ru_v3"
+        self.speaker = "baya"
+        self.sample_rate = 48000
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model, _ = torch.hub.load(
+            'snakers4/silero-models',
+            'silero_tts',
+            language=self.language,
+            speaker=self.model_id
+        )
+        print("Доступные голоса:", self.model.speakers)
+        if self.speaker not in self.model.speakers:
+            raise ValueError(f"Голос {self.speaker} не найден! Используй один из: {self.model.speakers}")
+        
+        #Передача в класс Voice в src.data.voice
+        self.VOICE = Voice(
+            self.porcupine,
+            self.pa,
+            self.audio_stream,
+            self.model,
+            self.rec,
+            self.language,
+            self.model_id,
+            self.speaker,
+            self.device,
+            self.sample_rate,
+            context = self
+        )
+    
+    
+    #проверка wifi
+    async def сhecks(self):
+        if CHECKS.is_connected():
+            config['wifi'] = True
+        else:
+            config['wifi'] = False
+            await self.VOICE.voice_generate(random.choice(standart_word['no_wifi']))
 
+    
     async def run(self):
-        try:
-            while True:
-                pcm = self.audio_stream.read(self.porcupine.frame_length, exception_on_overflow=False)
-                arr = np.frombuffer(pcm, dtype=np.int16)
-                res = self.porcupine.process(arr)
-                if res >= 0:
-                    asyncio.create_task(VOICE.voice_generate("Слушаю сэр"))
-                    await asyncio.sleep(1)
-                    
-                    frames = []
-                    silence_count = 0
-                    silence_max = (2 * int(16000 / self.porcupine.frame_length))
-                    while True:
-                        data = self.audio_stream.read(pcm)
-                        frames.append(data)
-                        if is_silence(data):
-                            silence_count += 1
-                        else:
-                            silence_count = 0
-                        if silence_count >= silence_max:
-                            break
-                    audio_data = b''.join(frames)
-
-                    self.rec.AcceptWaveform(audio_data)
-                    result = json.loads(self.rec.Result())
-                    phrase = result.get('text')
-                    print("Распознано:", phrase)
-                    
-                    if "папочка вернулся" or "я дома" in phrase.lower():
-                        await self.command_hello()
-                        
-                    else:
-                        res = await AI.OpenAi(phrase, "Отвечай ТОЛЬКО ПО ДЕЛУ! И НИЧЕГО ЛИШНЕГО! Должно быть коротко, ясно, официально и с уважением.")
-                        try:
-                            answer_text = res
-                        except Exception:
-                            answer_text = str(res)
-                        await VOICE.voice_generate(answer_text)
-
-        except KeyboardInterrupt:
-            print("Останавливаемся...")
-        finally:
-            self.audio_stream.close()
-            self.pa.terminate()
-            self.porcupine.delete()
-
-          
-          
-    async def command_hello(self):
-        res = await AI.OpenAi("мне нужно ТОЛЬКО ПРИВЕТСТВИЕ И НИЧЕГО БОЛЬШЕ. Оно должно быть в стиле джарвис из железного человека. Что то типа 'С возвращением, сер' или 'Рад что вы вернули сер' или 'К вашим услугам сер' В ОБЩЕМ КАКОЕ ТО ПРИВЕТСТВИЕ", config['standart_sp'])
-        player = vlc.MediaPlayer("D:/work/coding/O.S.C.A.R/system/sound/AC_DC - Back In Black.mp3")
-        player.play()
-        await asyncio.sleep(1)
-        await VOICE.voice_generate(res)
+        await self.сhecks()
+        await self.VOICE.search_wwd()
+        
+    
+    
+    
+JARVIS = Jarvis()
