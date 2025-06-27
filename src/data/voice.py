@@ -6,6 +6,7 @@ import time
 import json
 import inspect
 import random
+import sounddevice as sd
 
 from src.data.run.prompt import standart_word
 from src.command.commands_center import COMMANDS_CENTER
@@ -59,7 +60,6 @@ class Voice:
 	
 	async def response(self, lag: int, as_phrase: bool = False):
 		frames = []
-		#lag = примерная длинна молчания в секундах для дальнейшей обработки
 		silence_max = (lag * int(16000 / self.porcupine.frame_length))
 		silence_count = 0
 		while True:
@@ -86,8 +86,6 @@ class Voice:
 		loop = asyncio.get_running_loop()
 		await loop.run_in_executor(None, self._voice_generate_sync, text)
 	
-	
-	
 	def _voice_generate_sync(self, text):
 		sig = inspect.signature(self.model.apply_tts)
 		if 'texts' in sig.parameters:
@@ -102,9 +100,8 @@ class Voice:
 				speaker=self.speaker,
 				sample_rate=self.sample_rate
 			)
-		sf.write("test_voice.wav", audio, self.sample_rate)
-		player = vlc.MediaPlayer("test_voice.wav")
-		player.play()
-		while player.is_playing():
-			time.sleep(0.1)
+		# Нормализуем, если требуется
+		audio = audio.astype('float32')  # sounddevice ожидает float32
+		sd.play(audio, self.sample_rate)
+		sd.wait()  # дождаться окончания воспроизведения
 

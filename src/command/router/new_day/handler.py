@@ -12,10 +12,8 @@ from src.command.router.new_day.prompt import start
 #ПРИНИМАЕМ ТЕКСТ ОТ VOSK ДАЖЕ ЕСЛИ НЕ НУЖЕН!
 async def handle(text, context):
 	await context.VOICE.voice_generate(random.choice(start['new_day']))
-	await asyncio.sleep(1)
-	print(">> Первая реплика проиграна")
+	await asyncio.sleep(2)
 	res = await context.VOICE.response(2, True)
-	print(">> 2 реплика проиграна")
 	
 	if res and "да" in res.lower():
 		await context.VOICE.voice_generate(random.choice(start['start_music']))
