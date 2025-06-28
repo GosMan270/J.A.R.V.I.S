@@ -41,7 +41,7 @@ class Jarvis:
 		self.language = "ru"
 		self.model_id = "ru_v3"
 		self.speaker = "baya"
-		self.sample_rate = 48000
+		self.tts_sample_rate = 48000
 		self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 		self.silero_model, _ = torch.hub.load(
 			'snakers4/silero-models',
@@ -64,7 +64,7 @@ class Jarvis:
 			self.model_id,
 			self.speaker,
 			self.device,
-			self.sample_rate,
+			self.tts_sample_rate,
 			context=self
 		)
 	

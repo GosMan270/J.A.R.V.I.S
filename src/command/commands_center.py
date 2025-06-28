@@ -4,12 +4,15 @@ import importlib
 from .map import COMMAND_MAPPINGS
 
 
+
 class CommandCenter:
 	def __init__(self, router_path="src.command.router"):
 		self.router_path = router_path
 		self.router_folder = os.path.join(os.path.dirname(__file__), "router")
 		self.handlers = {}
 		self.load_routers()
+	
+	
 	
 	def load_routers(self):
 		self.handlers.clear()
@@ -33,6 +36,8 @@ class CommandCenter:
 		self.load_routers()
 		print("Роутеры перезагружены.")
 	
+	
+	
 	async def command_center(self, text, context):
 		self.load_routers()
 		norm_text = text.lower()
@@ -50,7 +55,10 @@ class CommandCenter:
 				print(f"Ошибка в обработчике {mapped_cmd}: {e}")
 			return
 		
-		print("Неизвестная команда:", text)
+		try:
+			await self.handlers["ai"](text, context)
+		except Exception as e:
+			print(f"Ошибка в AI обработчике: {e}")
 
 
 COMMANDS_CENTER = CommandCenter()

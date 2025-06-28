@@ -100,8 +100,9 @@ class Voice:
 				speaker=self.speaker,
 				sample_rate=self.sample_rate
 			)
-		# Нормализуем, если требуется
-		audio = audio.astype('float32')  # sounddevice ожидает float32
+		if hasattr(audio, "cpu"):
+			audio = audio.cpu().numpy()
+		audio = audio.astype('float32')
 		sd.play(audio, self.sample_rate)
-		sd.wait()  # дождаться окончания воспроизведения
+		sd.wait()
 
