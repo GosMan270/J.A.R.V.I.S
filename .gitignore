@@ -1,0 +1,91 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual environments
+.venv*/
+venv*/
+env*/
+ENV/
+env.bak/
+venv.bak/
+
+# pip/pipenv/poetry
+*.egg-info/
+.eggs/
+dist/
+build/
+Pipfile.lock
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Static type checkers
+.pyre/
+.pyright/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# pyenv/Python version
+.python-version
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# System/Mac
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+logs/
+*.tmp
+*.bak
+
+# Local database
+*.sqlite3
+
+# Output / media / results
+output.mp3
+*.mp3
+*.wav
+
+# Data / models / big files (add if needed)
+data/
+checkpoints/
+models/
+weights/
+results/
+
+# User config
+.env
+.sqlite
+system
+
+# Ignore wheel files
+*.whl
