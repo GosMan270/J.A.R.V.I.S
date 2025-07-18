@@ -1,30 +1,23 @@
-"""
-Запуск ассистента
-"""
-import asyncio
-import traceback
+from fastapi import FastAPI
 
-from src.program import Jarvis
-from src.data.database import DATABASE
+from voice_asistent.core.program import JARVIS
+from utils.database import DATABASE
+
+from core.tts import router as tts_router
+from core.stt import router as stt_router
+
+app = FastAPI()
 
 
+app.include_router(stt_router)
+app.include_router(tts_router)
 
 
-async def start():
-    while True:
-        try:
-            jarvis = Jarvis()
-            await jarvis.run()
-        except Exception as e:
-            print(f"Отключен с ошибкой: {e}")
-            traceback.print_exc()
-            print("Перезапуск через 2 секунды...")
-            await DATABASE.close_connection()
-            await asyncio.sleep(2)
-        else:
-            print("Jarvis завершён корректно.")
-            await DATABASE.close_connection()
-            break
+@app.on_event("startup")
+async def startup_event():
+    await JARVIS.run()
 
-if __name__ == "__main__":
-    asyncio.run(start())
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await DATABASE.close_connection()

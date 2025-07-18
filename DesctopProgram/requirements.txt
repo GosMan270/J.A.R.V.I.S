@@ -13,7 +13,7 @@ sounddevice
 selenium
 omegaconf
 aiosqlite
-python-multipart
+
 
 fastapi
 uvicorn[standart]

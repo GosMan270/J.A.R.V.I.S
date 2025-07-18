@@ -9,6 +9,9 @@ import pvporcupine
 import pyaudio
 import torch
 import vosk
+import fastapi
+
+from fastapi import FastAPI
 from dotenv import load_dotenv
 
 from src.data.voice import Voice
@@ -34,9 +37,7 @@ class Jarvis:
             access_key=os.getenv('PICO_KEY'),
             keyword_paths=[os.getenv("PICO_MODEL")]
         )
-        logging.info(os.getenv('PICO_MODEL') + ' loaded is grate ')
 
-        # Инициализация VOSK
         self.pa = pyaudio.PyAudio()
         self.audio_stream = self.pa.open(
             rate=self.porcupine.sample_rate,
@@ -45,7 +46,9 @@ class Jarvis:
             input=True,
             frames_per_buffer=self.porcupine.frame_length
         )
+        logging.info(os.getenv('PICO_MODEL') + ' loaded is grate ')
 
+        # Инициализация VOSK
         if not os.path.exists(os.getenv('VOSK_MODEL')):
             print("Dont model!")
             exit(1)

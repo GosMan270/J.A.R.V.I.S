@@ -1,21 +1,32 @@
+"""
+Файл запроса к ии на внешний API
+"""
 import aiohttp
 import json
+import asyncio
+import dotenv
+import os
 
-from src.data.run.config import config
+from dotenv import load_dotenv
 
+
+
+dotenv_patch = os.path.join(os.path.dirname(__file__),'run', '.env')
+load_dotenv(dotenv_patch)
 
 class Ai:
 	def __init__(self):
-		pass
+		self.dotenv_patch = os.path.join(os.path.dirname(__file__), 'run', '.env')
+		load_dotenv(self.dotenv_patch)
 	
 	
 	async def handle(self, text, context):
-		res = self.open_ai(text, '')
+		res = await self.open_ai(text, '')
 		
 		
 	async def _do_http_request(self, url, data):
 		headers = {
-			"Authorization": f"Bearer {config["api_key"]}",
+			"Authorization": f"Bearer {os.getenv('API_TOKEN')}",
 			"Content-Type": "application/json"
 		}
 		async with aiohttp.ClientSession() as session:
@@ -40,5 +51,5 @@ class Ai:
 				}
 			]
 		}
-		res = await self._do_http_request(config["api_url"], data)
+		res = await self._do_http_request(os.getenv('API_URL'), data)
 		return res['choices'][0]['message']['content']
