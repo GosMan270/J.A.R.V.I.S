@@ -99,7 +99,7 @@ class Jarvis:
         """
         #захардкодил path. Временное решение. Потом перенесется в config.env
         #при переходе на посгре и композ
-        await DATABASE.open_connection('C:/coding/PROGRAM/jarvis/voice_asistent/identifier.sqlite')
+        await DATABASE.open_connection('C:/coding/PROGRAM/jarvis/VoiceAssistent/identifier.sqlite')
         await self.VOICE.search_wwd()
 
 

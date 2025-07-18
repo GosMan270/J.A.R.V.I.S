@@ -4,8 +4,9 @@
 from fastapi import FastAPI
 
 from core.program import router as core_router
+from modul.commands_center import router as command_center_router
 
-from voice_asistent.core.program import JARVIS
+from VoiceAssistent.core.program import JARVIS
 from utils.database import DATABASE
 
 
@@ -14,6 +15,7 @@ app = FastAPI()
 
 
 app.include_router(core_router)
+app.include_router(command_center_router)
 
 
 @app.on_event("startup")

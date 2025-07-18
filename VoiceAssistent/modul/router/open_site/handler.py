@@ -38,7 +38,7 @@ async def handle(text, context):
             return
 
     # Оповещение о запуске
-    word = random.choice(start['hot_site'])
+    word = random.choice(start['open_site'])
     await context.VOICE.voice_generate(word)
     res = await context.VOICE.response(2, True)
 

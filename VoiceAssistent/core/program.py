@@ -19,7 +19,7 @@ from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
-from voice_asistent.utils.database import DATABASE
+from VoiceAssistent.utils.database import DATABASE
 
 
 
@@ -37,11 +37,6 @@ router = APIRouter()
 
 class TtsRequest(BaseModel):
     text: str
-
-
-class JarvisCoreDef('str', Enum):
-    tts = 'tts'
-    stt = 'stt'
 
 
 class Jarvis:
@@ -86,7 +81,7 @@ class Jarvis:
         """
         Запуск BD
         """
-        await DATABASE.open_connection('C:/coding/PROGRAM/jarvis/voice_asistent/identifier.sqlite')
+        await DATABASE.open_connection('C:/coding/PROGRAM/jarvis/VoiceAssistent/identifier.sqlite')
 
 
     def tts_generate_sync(self, text):
