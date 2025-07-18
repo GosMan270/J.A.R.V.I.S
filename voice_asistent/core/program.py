@@ -14,7 +14,7 @@ import numpy as np
 import soundfile as sf
 
 from enum import Enum
-from fastapi import FastAPI, UploadFile
+from fastapi import APIRouter, UploadFile
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -25,10 +25,14 @@ from voice_asistent.utils.database import DATABASE
 
 logging.basicConfig(level=logging.INFO)
 
+
 dotenv_path = os.path.join(os.path.dirname(__file__), 'data', 'run', 'config.env')
 
+
 load_dotenv(dotenv_path)
-app = FastAPI()
+
+
+router = APIRouter()
 
 
 class TtsRequest(BaseModel):
@@ -123,7 +127,7 @@ class Jarvis:
         return phrase
 
 
-@app.post('/tts')
+@router.post('/tts')
 async def tts_generate(tts_request: TtsRequest):
     """
     Запрос на синтез голоса silero tts
@@ -141,7 +145,7 @@ async def tts_generate(tts_request: TtsRequest):
     )
 
 
-@app.post('/stt')
+@router.post('/stt')
 async def stt_generate(file: UploadFile):
     """
     Запрос для перевода голоса в текст
