@@ -1,4 +1,28 @@
+import os
 import aiosqlite
+import dotenv
+
+from dotenv import load_dotenv
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import String, create_engine
+
+
+
+dotenv_patch = os.path.join(os.path.dirname(__file__), 'config.env')
+load_dotenv(dotenv_patch)
+
+engine = create_engine(f"sqlite:///{os.getenv('DATABASE')}", echo=True)
+
+
+class Base(DeclarativeBase):
+	pass
+
+
+class UserBase(Base):
+    __tablename__ = 'user'
+
+    id: Mapped[int] = mapped_column(primary_key = True)
+    name: Mapped[str] = mapped_column(String(30))
 
 
 class Database:

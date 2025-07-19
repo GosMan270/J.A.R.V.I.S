@@ -15,5 +15,6 @@ omegaconf
 aiosqlite
 python-multipart
 
+sqlalchemy
 fastapi
 uvicorn[standart]

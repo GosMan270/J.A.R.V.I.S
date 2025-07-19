@@ -1,5 +1,5 @@
 """
-Файл запуска REST с ивентами
+Файл запуска,и активации ивента
 """
 from fastapi import FastAPI
 
@@ -7,7 +7,6 @@ from core.program import router as core_router
 from modul.commands_center import router as command_center_router
 
 from VoiceAssistent.core.program import JARVIS
-from utils.database import DATABASE
 
 
 
