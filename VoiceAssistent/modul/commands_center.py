@@ -1,54 +1,43 @@
 import os
 import importlib
+import asyncio
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from .map import CM, PROMPTS, PromptSelectSystem
 
+#Модули
+from .router.ai.handler import handle as AI
+
 
 
 app = FastAPI()
+
+
+
+hendler = {
+    'AI': AI,
+}
+
 
 
 class CommandRequest(BaseModel):
     text: str
 
 
+
 class CommandCenter:
-    def __init__(self, router_path="VoiceAssistent.modul.router"):
-        self.router_path = router_path
-        self.router_folder = os.path.join(os.path.dirname(__file__), "router")
-        self.handlers = {}
-        self.load_routers()
-
-
-    def load_routers(self):
-        self.handlers.clear()
-        for dirname in os.listdir(self.router_folder):
-            dirpath = os.path.join(self.router_folder, dirname)
-            if os.path.isdir(dirpath):
-                handler_path = os.path.join(dirpath, "handler.py")
-                if os.path.exists(handler_path):
-                    module_name = f"{self.router_path}.{dirname}.handler"
-                    try:
-                        if module_name in importlib.sys.modules:
-                            module = importlib.reload(importlib.sys.modules[module_name])
-                        else:
-                            module = importlib.import_module(module_name)
-                        self.handlers[dirname] = module.handle
-                    except Exception as e:
-                        print(f"Не удалось загрузить роутер {dirname}: {e}")
 
 
     async def detect_command(self, user_text):
         """Первый этап: AI пытается найти команду."""
-        return await self.handlers['ai'](user_text, CM.command_map() if callable(CM.command_map) else CM)
+        return await AI(user_text, CM.command_map() if callable(CM.command_map) else CM)
 
 
     async def detect_prompt(self, user_text):
         """Второй этап: попытка определить нужный промпт."""
-        res = await self.handlers['ai'](user_text, PromptSelectSystem)
+        res = await AI(user_text, PromptSelectSystem)
         if res in PROMPTS:
             return res
         return "standart"
@@ -64,7 +53,7 @@ class CommandCenter:
     async def general_ai(self, user_text, prompt_name):
         """Дать ответ через выбранный промпт."""
         prompt = PROMPTS.get(prompt_name, PROMPTS['standart'])
-        return await self.handlers['ai'](user_text, prompt)
+        return await AI(user_text, prompt)
 
 
     async def command_center(self, user_text, context=None):
@@ -83,12 +72,6 @@ class CommandCenter:
             except Exception as e:
                 print(f"Ошибка в обработчике {mapped_cmd}: {e}")
 
-        # fallback: AI
-        try:
-            return await self.run_handler(self.handlers["ai"], user_text, context)
-        except Exception as e:
-            print(f"Ошибка в AI обработчике: {e}")
-
 
 COMMAND_CENTER = CommandCenter()
 
@@ -97,17 +80,26 @@ COMMAND_CENTER = CommandCenter()
 async def command(command_request: CommandRequest) -> dict:
     user_text = command_request.text.strip()
     try:
-        # AI пытается найти команду (возвращает строку типа "def_<name function>")
-        ai_command = await COMMAND_CENTER.detect_command(user_text)
-        if ai_command and ai_command.startswith("def_"):
-            function_name = ai_command[4:].strip().lower()
-            handler = COMMAND_CENTER.handlers.get(function_name)
-            if handler:
-                result = await COMMAND_CENTER.run_handler(handler, user_text)
-                return {"result": result}
-        # Если не найдено, ищем промпт
-        prompt_name = await COMMAND_CENTER.detect_prompt(user_text)
-        result = await COMMAND_CENTER.general_ai(user_text, prompt_name)
-        return {"result": result}
+        # стартуем три корутины одновременно!
+        coro1 = COMMAND_CENTER.detect_command(user_text)
+        coro2 = COMMAND_CENTER.detect_prompt(user_text)
+        coro3 = COMMAND_CENTER.general_ai(user_text, "standart")
+
+        results = await asyncio.gather(
+            coro1,  # ai_command
+            coro2,  # prompt_name
+            coro3,  # ai general answer
+            return_exceptions=True
+        )
+
+        # results[0] = вывод detect_command
+        # results[1] = detect_prompt
+        # results[2] = general_ai
+
+        return {
+            "ai_command": results[0],
+            "prompt_name": results[1],
+            "ai_answer": results[2]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
