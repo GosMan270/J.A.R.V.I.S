@@ -12,12 +12,13 @@ from .router.ai.handler import handle as AI
 
 
 
+
 app = FastAPI()
 
 
 
-hendler = {
-    'AI': AI,
+hendlers = {
+    'AI': AI
 }
 
 
@@ -28,11 +29,12 @@ class CommandRequest(BaseModel):
 
 
 class CommandCenter:
+    """Класс распределения команд"""
 
 
     async def detect_command(self, user_text):
         """Первый этап: AI пытается найти команду."""
-        return await AI(user_text, CM.command_map() if callable(CM.command_map) else CM)
+        return await AI(user_text, CM.command_map())
 
 
     async def detect_prompt(self, user_text):
@@ -43,34 +45,35 @@ class CommandCenter:
         return "standart"
 
 
-    async def run_handler(self, handler, user_text, context=None):
-        if context is not None:
-            return await handler(user_text, context)
-        else:
-            return await handler(user_text)
-
-
     async def general_ai(self, user_text, prompt_name):
         """Дать ответ через выбранный промпт."""
-        prompt = PROMPTS.get(prompt_name, PROMPTS['standart'])
+        prompt = PROMPTS.get(prompt_name, PROMPTS['StandartPrompt'])
         return await AI(user_text, prompt)
 
 
-    async def command_center(self, user_text, context=None):
-        self.load_routers()
-        norm_text = user_text.lower()
-        mapped_cmd = None
+    async def ai_final_answer(self,user_text, ai_command, prompt_name, ai_answer):
+        """Анализ всех 3 вызовов и конечный результат"""
+        if ai_command == 'def_None':
+            return ai_answer
+        elif ai_command != 'def_None':
+            return await self.command_center(user_text, ai_command)
 
-        for key_phrases, handler_name in (CM.command_map() if callable(CM.command_map) else CM).items():
-            if any(phrase in norm_text for phrase in key_phrases):
-                mapped_cmd = handler_name
-                break
 
-        if mapped_cmd and mapped_cmd in self.handlers:
+    async def command_center(self, user_text, ai_command):
+        name_hendler = ai_command.split('_')[1]
+        print(name_hendler)
+
+        if name_hendler in hendlers:
+            print(hendlers)
             try:
-                return await self.run_handler(self.handlers[mapped_cmd], user_text, context)
+                return await self.run_handler(hendlers[name_hendler], user_text)
             except Exception as e:
-                print(f"Ошибка в обработчике {mapped_cmd}: {e}")
+                print(f"Ошибка в обработчике {name_hendler}: {e}")
+        else:
+            return f"error 5XX. the module {name_hendler} is missing"
+
+    async def run_handler(self, handler, user_text):
+            return await handler(user_text)
 
 
 COMMAND_CENTER = CommandCenter()
@@ -83,7 +86,8 @@ async def command(command_request: CommandRequest) -> dict:
         # стартуем три корутины одновременно!
         coro1 = COMMAND_CENTER.detect_command(user_text)
         coro2 = COMMAND_CENTER.detect_prompt(user_text)
-        coro3 = COMMAND_CENTER.general_ai(user_text, "standart")
+        coro3 = COMMAND_CENTER.general_ai(user_text, "StandartPrompt")
+
 
         results = await asyncio.gather(
             coro1,  # ai_command
@@ -92,14 +96,19 @@ async def command(command_request: CommandRequest) -> dict:
             return_exceptions=True
         )
 
+
+
         # results[0] = вывод detect_command
         # results[1] = detect_prompt
         # results[2] = general_ai
+        res = await  COMMAND_CENTER.ai_final_answer(user_text, results[0], results[1], results[2])
+
 
         return {
             "ai_command": results[0],
             "prompt_name": results[1],
-            "ai_answer": results[2]
+            "ai_answer": results[2],
+            "ai_final_answer": res,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
