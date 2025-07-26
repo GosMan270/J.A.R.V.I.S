@@ -34,6 +34,8 @@ active_ws_by_job = {}
 
 
 class ConnectionManager:
+
+
     def __init__(self):
         """Хранение активных соединений в виде {room_id: {user_id: WebSocket}}"""
         self.active_connections: Dict[int, Dict[int, WebSocket]] = {}
@@ -49,6 +51,7 @@ class ConnectionManager:
             self.active_connections[room_id] = {}
         self.active_connections[room_id][user_id] = websocket
 
+
     def disconnect(self, room_id: int, user_id: int):
         """
         Закрывает соединение и удаляет его из списка активных подключений.
@@ -58,6 +61,7 @@ class ConnectionManager:
             del self.active_connections[room_id][user_id]
             if not self.active_connections[room_id]:
                 del self.active_connections[room_id]
+
 
     async def broadcast(self, message: str, room_id: int, sender_id: int):
         """
@@ -121,51 +125,9 @@ class CommandCenter:
             return await handler(user_text)
 
 
-COMMAND_CENTER = CommandCenter()
-
-
-# @app.post('/command')
-# async def command(command_request: CommandRequest) -> dict:
-#     user_text = command_request.text.strip()
-#     try:
-#         # стартуем три корутины одновременно!
-#         coro1 = COMMAND_CENTER.detect_command(user_text)
-#         coro2 = COMMAND_CENTER.detect_prompt(user_text)
-#         coro3 = COMMAND_CENTER.general_ai(user_text, "StandartPrompt")
-#
-#
-#         results = await asyncio.gather(
-#             coro1,  # ai_command
-#             coro2,  # prompt_name
-#             coro3,  # ai general answer
-#             return_exceptions=True
-#         )
-#
-#
-#
-#         # results[0] = вывод detect_command
-#         # results[1] = detect_prompt
-#         # results[2] = general_ai
-#         res = await  COMMAND_CENTER.ai_final_answer(user_text, results[0], results[1], results[2])
-#
-#
-#         return {
-#             "ai_command": results[0],
-#             "prompt_name": results[1],
-#             "ai_answer": results[2],
-#             "ai_final_answer": res,
-#         }
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-#
-#
-
-
-manager = ConnectionManager()
-
-
 @app.websocket("/ws/ai/{api_key}")
 async def ai_ws(websocket: WebSocket, api_key: str):
+    """Принимает запрос WebSocket"""
     await websocket.accept()
     try:
         while True:
@@ -191,15 +153,13 @@ async def ai_ws(websocket: WebSocket, api_key: str):
                 del active_ws_by_job[jid]
 
 
-
-# Пример тяжёлой задачи
 async def heavy_ai_task(user_text):
+    """Запуск задачи"""
     try:
         # стартуем три корутины одновременно!
         coro1 = COMMAND_CENTER.detect_command(user_text)
         coro2 = COMMAND_CENTER.detect_prompt(user_text)
         coro3 = COMMAND_CENTER.general_ai(user_text, "StandartPrompt")
-
 
         results = await asyncio.gather(
             coro1,  # ai_command
@@ -208,13 +168,10 @@ async def heavy_ai_task(user_text):
             return_exceptions=True
         )
 
-
-
         # results[0] = вывод detect_command
         # results[1] = detect_prompt
         # results[2] = general_ai
         res = await  COMMAND_CENTER.ai_final_answer(user_text, results[0], results[1], results[2])
-
 
         return {
             "ai_command": results[0],
@@ -226,9 +183,8 @@ async def heavy_ai_task(user_text):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
-
 def result_sender(loop):
+    """Возвращение результата"""
     from rq.job import Job
     import time
     while True:
@@ -252,3 +208,7 @@ def result_sender(loop):
 async def on_startup():
     loop = asyncio.get_running_loop()
     threading.Thread(target=result_sender, args=(loop,), daemon=True).start()
+
+
+manager = ConnectionManager()
+COMMAND_CENTER = CommandCenter()
