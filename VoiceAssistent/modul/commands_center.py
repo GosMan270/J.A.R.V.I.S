@@ -1,11 +1,7 @@
-import os
-import importlib
 import asyncio
 from rq import Queue
 from redis import Redis
 import threading
-import time
-
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, FastAPI
 from typing import Dict
@@ -23,12 +19,14 @@ redis_conn = Redis()
 q = Queue(connection=redis_conn)
 
 
+"""Список доступных модулей из импорта"""
 hendlers = {
     'AI': AI,
     'MyCoach': MyCoach
 }
 
 
+"""Активные API_KEY из WebSocket"""
 active_ws_by_job = {}
 
 
@@ -121,6 +119,7 @@ class CommandCenter:
         else:
             return f"error 5XX. the module {name_hendler} is missing"
 
+
     async def run_handler(self, handler, user_text):
             return await handler(user_text)
 
@@ -191,7 +190,6 @@ def result_sender(loop):
         for job_id, ws in list(active_ws_by_job.items()):
             job = Job.fetch(job_id, connection=redis_conn)
             if job.is_finished:
-                # Правильная отправка результата (НЕ create_task)
                 future = asyncio.run_coroutine_threadsafe(
                     ws.send_json({'job_id': job_id, 'result': job.result}),
                     loop
