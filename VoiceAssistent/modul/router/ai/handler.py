@@ -27,7 +27,9 @@ class Ai:
 
         data = {
             "model": "gpt-4o",
-            "max_tokens": 10000,
+            "prompt_tokens": 15000,
+            "completion_tokens": 15000,
+            "total_tokens": 30000,
             "messages": [
                 {"role": "user", "content": text},
                 {"role": "system", "content": system}
