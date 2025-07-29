@@ -107,7 +107,12 @@ class CommandCenter:
 
 
     async def command_center(self, user_text, ai_command):
-        name_hendler = ai_command.split('_')[1]
+        if isinstance(ai_command, Exception):
+            # можно залогировать и вернуть фразу или raise HTTPException
+            print(f"AI detect_command выкинул exception: {ai_command}")
+            raise HTTPException(status_code=500, detail=f"AI detect_command error: {ai_command}")
+        else:
+            name_hendler = ai_command.split('_')[1]
         print(name_hendler)
 
         if name_hendler in hendlers:
