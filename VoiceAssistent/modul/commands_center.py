@@ -193,7 +193,10 @@ async def websocket_endpoint(websocket: WebSocket, key: str, device: str):
     try:
         while True:
             data = await websocket.receive_text()
-            await manager.broadcast(f"MESSAGE = {data}", key, device)
+            print(data)
+            user_message = data
+            res = await heavy_ai_task(user_message)
+            await manager.broadcast(res, key, device)
     except WebSocketDisconnect:
         manager.disconnect(key, device)
         await manager.broadcast(f"(ID: {device}) покинул чат.", key, device )
