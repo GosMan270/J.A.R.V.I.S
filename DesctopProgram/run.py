@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import threading
 import asyncio
 import aiohttp
 
+from qasync import QEventLoop, asyncSlot
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
@@ -35,7 +35,6 @@ class JarvisWebSocketClient:
             await self.ws.close()
         if self.session:
             await self.session.close()
-
 
 
 class Ui_MainWindow(object):
@@ -211,63 +210,6 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
-
-        # ---- WebSocket инициализация ----
-        self.api_key = "secretkey123"  # <-- свой реальный API-KEY!
-        self.ws_client = JarvisWebSocketClient(self.api_key)
-        self.ws_loop = asyncio.new_event_loop()
-        self.ws_connected = threading.Event()
-        threading.Thread(target=self.start_ws, daemon=True).start()
-        self.pushButton.clicked.connect(self.handle_send)
-
-    def start_ws(self):
-        asyncio.set_event_loop(self.ws_loop)
-        self.ws_loop.run_until_complete(self.ws_client.connect())
-        self.ws_connected.set()
-        self.ws_loop.run_forever()
-
-    def handle_send(self):
-        user_text = self.textEdit.toPlainText().strip()
-        if not user_text:
-            self.RESPONCE.setText("Поле ввода пустое!")
-            return
-        self.RESPONCE.setText("Загрузка...")
-        if not self.ws_connected.is_set():
-            self.RESPONCE.setText("Подключение к серверу...")
-            self.ws_connected.wait()
-        future = asyncio.run_coroutine_threadsafe(self.send_and_receive(user_text), self.ws_loop)
-
-        def done_callback(fut):
-            if exc := fut.exception():
-                print("WS-ошибка:", exc)
-
-        future.add_done_callback(done_callback)
-
-    async def send_and_receive(self, user_text):
-        try:
-            await self.ws_client.send_message(user_text)
-            job_msg = await self.ws_client.receive_message()
-            job_id = job_msg.get('job_id')
-            result_msg = await self.ws_client.receive_message()
-            print(result_msg)
-            print(result_msg)
-            print(result_msg)
-            print(result_msg)
-            print(result_msg)
-
-            self.RESPONCE.setText("Выполненно!")
-            self.textEdit.setText(result_msg['ai_final_answer'])
-            text = result_msg.get('result', 'Нет ответа от сервера!')
-        except Exception as e:
-            text = f"[WS-клиент ошибка] {e}"
-        QtCore.QMetaObject.invokeMethod(
-            self.RESPONCE,
-            "setText",
-            QtCore.Qt.QueuedConnection,
-            QtCore.Q_ARG(str, text)
-        )
-
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -298,10 +240,42 @@ class Ui_MainWindow(object):
         self.pushButton.setText(_translate("MainWindow", "RESPONCE"))
 
 
+class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        self.api_key = "secretkey123"
+        self.ws_client = JarvisWebSocketClient(self.api_key)
+        self.pushButton.clicked.connect(self.handle_send)
+        QtCore.QTimer.singleShot(0, self.__start_ws)
+
+    def __start_ws(self):
+        asyncio.create_task(self.ws_client.connect())
+
+    @asyncSlot()
+    async def handle_send(self):
+        user_text = self.textEdit.toPlainText().strip()
+        if not user_text:
+            self.RESPONCE.setText("Поле ввода пустое!")
+            return
+        self.RESPONCE.setText("Загрузка...")
+        try:
+            await self.ws_client.send_message(user_text)
+            job_msg = await self.ws_client.receive_message()
+            result_msg = await self.ws_client.receive_message()
+            self.RESPONCE.setText("Выполненно!")
+            self.textEdit.setText(result_msg['ai_final_answer'])
+            text = result_msg.get('result', 'Нет ответа от сервера!')
+        except Exception as e:
+            text = f"[WS-клиент ошибка] {e}"
+        self.RESPONCE.setText(text)
+
+
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())
+    loop = QEventLoop(app)
+    asyncio.set_event_loop(loop)
+    window = MainWindow()
+    window.show()
+    with loop:
+        loop.run_forever()

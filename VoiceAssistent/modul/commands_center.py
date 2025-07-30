@@ -129,32 +129,74 @@ class CommandCenter:
             return await handler(user_text)
 
 
-@app.websocket("/ws/ai/{api_key}")
-async def ai_ws(websocket: WebSocket, api_key: str):
-    """Принимает запрос WebSocket"""
-    await websocket.accept()
+
+
+
+
+
+
+
+
+
+
+
+
+from fastapi.responses import HTMLResponse
+
+
+html = """
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chat</title>
+    </head>
+    <body>
+        <h1>WebSocket Chat</h1>
+        <form action="" onsubmit="sendMessage(event)">
+            <input type="text" id="messageText" autocomplete="off"/>
+            <button>Send</button>
+        </form>
+        <ul id='messages'>
+        </ul>
+        <script>
+            var ws = new WebSocket("ws://localhost:8000/ws/1/2");
+            ws.onmessage = function(event) {
+                var messages = document.getElementById('messages')
+                var message = document.createElement('li')
+                var content = document.createTextNode(event.data)
+                message.appendChild(content)
+                messages.appendChild(message)
+            };
+            function sendMessage(event) {
+                var input = document.getElementById("messageText")
+                ws.send(input.value)
+                input.value = ''
+                event.preventDefault()
+            }
+        </script>
+    </body>
+</html>
+"""
+
+
+@app.get("/")
+async def get():
+    return HTMLResponse(html)
+
+
+@app.websocket("/ws/{key}/{device}")
+async def websocket_endpoint(websocket: WebSocket, key: str, device: str):
+    key = 123
+    device = 123
+    await manager.connect(websocket, key, device)
+
     try:
         while True:
-            data = await websocket.receive_json()
-            user_text = data['text']
-
-            # Кладём задачу в RQ и сохраняем связь с сокетом
-            job = q.enqueue(heavy_ai_task, user_text)
-            active_ws_by_job[job.id] = websocket
-
-            # Возвращаем job_id клиенту (на фронте по нему ждём результат)
-            await websocket.send_json({'job_id': job.id})
-
-            # Можно сделать короткое ожидание, если задача лёгкая:
-            # job.refresh()
-            # if job.result is not None:
-            #    await websocket.send_json({'job_id': job.id, 'result': job.result})
-
+            data = await websocket.receive_text()
+            await manager.broadcast(f"MESSAGE = {data}", key, device)
     except WebSocketDisconnect:
-        # Убираем из мапы ws по disconnect
-        for jid, ws in list(active_ws_by_job.items()):
-            if ws == websocket:
-                del active_ws_by_job[jid]
+        manager.disconnect(key, device)
+        await manager.broadcast(f"(ID: {device}) покинул чат.", key, device )
 
 
 async def heavy_ai_task(user_text):
