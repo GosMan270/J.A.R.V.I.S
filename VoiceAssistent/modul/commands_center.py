@@ -189,17 +189,23 @@ async def websocket_endpoint(websocket: WebSocket, key: str, device: str):
     key = 123
     device = 123
     await manager.connect(websocket, key, device)
-
     try:
         while True:
             data = await websocket.receive_text()
-            print(data)
-            user_message = data
-            res = await heavy_ai_task(user_message)
-            await manager.broadcast(res, key, device)
+            if 'ping' in data:
+                await websocket.send_text('pong')
+                print('pong')
+            else:
+                print(data)
+                user_message = data
+                res = await heavy_ai_task(user_message)
+                await manager.broadcast(res, key, device)
     except WebSocketDisconnect:
         manager.disconnect(key, device)
         await manager.broadcast(f"(ID: {device}) покинул чат.", key, device )
+    except Exception as e:
+        print(f"EXCEPTION: {type(e).__name__}: {e}")
+
 
 
 async def heavy_ai_task(user_text):
